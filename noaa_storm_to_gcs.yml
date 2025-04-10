@@ -1,0 +1,35 @@
+id: noaa-storm-query-export
+namespace: severe.storms
+
+inputs:
+  - id: year
+    type: INT
+    required: true
+  - id: month
+    type: STRING
+    required: false
+
+variables:
+  filename: "noaa_storm_{{inputs.year}}{{ '-' ~ inputs.month if inputs.month else '' }}.csv"
+  gcs_uri: "gs://{{kv('GCP_BUCKET_NAME')}}/output/{{vars.filename}}"
+
+tasks:
+  - id: export_noaa_to_gcs
+    type: io.kestra.plugin.gcp.bigquery.ExtractToGcs
+    destinationUris:
+      - "{{render(vars.gcs_uri)}}"
+    sourceTable: "bigquery-public-data.noaa_storm_events.storms"
+    format: CSV
+    fieldDelimiter: ","
+    printHeader: true
+    projectId: "{{kv('GCP_PROJECT_ID')}}"
+    serviceAccount: "{{kv('GCP_CREDS')}}"
+    location: "{{kv('GCP_LOCATION')}}"
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{kv('GCP_CREDS')}}"
+      projectId: "{{kv('GCP_PROJECT_ID')}}"
+      location: "{{kv('GCP_LOCATION')}}"
+      bucket: "{{kv('GCP_BUCKET_NAME')}}"

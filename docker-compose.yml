@@ -34,7 +34,13 @@ services:
       - kestra-data:/app/storage
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/kestra-wd:/tmp/kestra-wd
+      - ./terraform/my_creds.json:/app/secrets/my_creds.json
     environment:
+      GCP_CREDS: ${GCP_CREDS}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      GCP_DATASET: ${GCP_DATASET}
+      GCP_BUCKET_NAME: ${GCP_BUCKET_NAME}
+      GCP_LOCATION: ${GCP_LOCATION}
       KESTRA_CONFIGURATION: |
         datasources:
           postgres:
