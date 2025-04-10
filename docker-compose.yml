@@ -3,6 +3,10 @@ volumes:
     driver: local
   kestra-data:
     driver: local
+  
+networks:
+  stormnet:
+    driver: bridge
 
 services:
   postgres:
@@ -18,9 +22,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 10
+    networks:
+      - stormnet
 
   kestra:
-    env_file: .env_encoded
     image: kestra/kestra:latest
     pull_policy: always
     user: "root"
@@ -61,3 +66,15 @@ services:
     depends_on:
       postgres:
         condition: service_started
+    networks:
+      - stormnet
+
+
+  terraform:
+    image: hashicorp/terraform:1.6.5
+    container_name: terraform
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ./terraform/my_creds.json:/workspace/my_creds.json
+    entrypoint: [ "sh", "-c", "terraform init && terraform apply -auto-approve" ]

@@ -1,6 +1,6 @@
 variable "credentials" {
   description = "credentials for project"
-  default     = "/Users/gchoong/Projects/SevereStorms/my_creds.json"
+  default     = "/workspace/my_creds.json"
 }
 variable "gcs_bucket_name" {
   description = "bucket name"
