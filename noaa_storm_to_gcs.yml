@@ -2,8 +2,8 @@ id: export-noaa-storms-to-gcs
 namespace: severe.storms
 
 description: |
-  Export NOAA storm data for a selected year from BigQuery public dataset
-  into a CSV file in a GCS bucket.
+  Export NOAA storm data for a selected year from BigQuery public dataset,
+  load it to a temp table, merge into a fact table, and drop the temp.
 
 inputs:
   - id: year
@@ -19,7 +19,7 @@ variables:
 
   destination_uri: "gs://{{kv('GCP_BUCKET_NAME')}}/noaa_storms/storms_{{inputs.year}}.csv"
   destination_table: "{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.temp_storms_{{inputs.year}}"
-
+  fact_table: "{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.noaa_storms_fact"
 
 tasks:
   - id: query_storm_data
@@ -33,30 +33,123 @@ tasks:
     projectId: "{{ kv('GCP_PROJECT_ID') }}"
     location: "{{ kv('GCP_LOCATION') }}"
 
-
-
   - id: export_to_gcs
     type: io.kestra.plugin.gcp.bigquery.ExtractToGcs
-    sourceTable: "{{render(vars.destination_table)}}"
+    sourceTable: "{{ render(vars.destination_table) }}"
     destinationUris:
-      - "{{render(vars.destination_uri)}}"
+      - "{{ render(vars.destination_uri) }}"
     format: CSV
     compression: GZIP
-    serviceAccount: "{{secret('GCP_SERVICE_ACCOUNT')}}"
-    projectId: "{{kv('GCP_PROJECT_ID')}}"
-    location: "{{kv('GCP_LOCATION')}}"
+    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+    projectId: "{{ kv('GCP_PROJECT_ID') }}"
+    location: "{{ kv('GCP_LOCATION') }}"
 
+  - id: merge_into_fact_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    sql: |
+      CREATE TABLE IF NOT EXISTS `{{ render(vars.fact_table) }}` (
+        unique_row_id STRING,
+        filename STRING,
+        episode_id STRING,
+        event_id STRING,
+        state STRING,
+        state_fips_code STRING,
+        event_type STRING,
+        cz_type STRING,
+        cz_fips_code STRING,
+        cz_name STRING,
+        wfo STRING,
+        event_begin_time DATETIME,
+        event_timezone STRING,
+        event_end_time DATETIME,
+        injuries_direct INT64,
+        injuries_indirect INT64,
+        deaths_direct INT64,
+        deaths_indirect INT64,
+        damage_property INT64,
+        damage_crops INT64,
+        source STRING,
+        magnitude FLOAT64,
+        magnitude_type STRING,
+        flood_cause STRING,
+        tor_f_scale STRING,
+        tor_length STRING,
+        tor_width STRING,
+        tor_other_wfo STRING,
+        location_index STRING,
+        event_range FLOAT64,
+        event_azimuth STRING,
+        reference_location STRING,
+        event_latitude FLOAT64,
+        event_longitude FLOAT64
+      )
+      PARTITION BY DATE(event_begin_time);
 
+      MERGE `{{ render(vars.fact_table) }}` T
+      USING (
+        SELECT
+          CAST(TO_HEX(MD5(CONCAT(
+            COALESCE(event_id, ''),
+            COALESCE(state, ''),
+            COALESCE(CAST(event_begin_time AS STRING), ''),
+            COALESCE(event_type, '')
+          ))) AS STRING) AS unique_row_id,
+          "storms_{{ inputs.year }}.csv" AS filename,
+          episode_id,
+          event_id,
+          state,
+          state_fips_code,
+          event_type,
+          cz_type,
+          cz_fips_code,
+          cz_name,
+          wfo,
+          event_begin_time,
+          event_timezone,
+          event_end_time,
+          injuries_direct,
+          injuries_indirect,
+          deaths_direct,
+          deaths_indirect,
+          damage_property,
+          damage_crops,
+          source,
+          magnitude,
+          magnitude_type,
+          flood_cause,
+          tor_f_scale,
+          tor_length,
+          tor_width,
+          tor_other_wfo,
+          location_index,
+          event_range,
+          event_azimuth,
+          reference_location,
+          event_latitude,
+          event_longitude
+        FROM `{{ render(vars.destination_table) }}`
+      ) S
+      ON T.unique_row_id = S.unique_row_id
+      WHEN NOT MATCHED THEN
+        INSERT ROW;
+    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+    projectId: "{{ kv('GCP_PROJECT_ID') }}"
+    location: "{{ kv('GCP_LOCATION') }}"
+
+  - id: drop_temp_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    sql: |
+      DROP TABLE IF EXISTS `{{ render(vars.destination_table) }}`
+    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+    projectId: "{{ kv('GCP_PROJECT_ID') }}"
+    location: "{{ kv('GCP_LOCATION') }}"
 
 pluginDefaults:
   - type: io.kestra.plugin.gcp
     values:
-      serviceAccount: "{{secret('GCP_SERVICE_ACCOUNT')}}"
-      projectId: "{{kv('GCP_PROJECT_ID')}}"
-      location: "{{kv('GCP_LOCATION')}}"
-      bucket: "{{kv('GCP_BUCKET_NAME')}}"
-
-
-
+      serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+      projectId: "{{ kv('GCP_PROJECT_ID') }}"
+      location: "{{ kv('GCP_LOCATION') }}"
+      bucket: "{{ kv('GCP_BUCKET_NAME') }}"
 
 
