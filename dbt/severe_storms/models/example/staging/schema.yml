@@ -1,0 +1,107 @@
+version: 2
+
+models:
+  - name: noaa_storms_fact
+    description: "Storm events from the NOAA Historic Severe Storms dataset, enriched and deduplicated for analytics."
+    columns:
+      - name: event_id
+        description: "ID assigned by NWS to a small part of a specific storm episode."
+        tests:
+          - unique
+          - not_null
+
+      - name: episode_id
+        description: "ID assigned by NWS to denote the full storm episode."
+
+      - name: state
+        description: "Full text name of the U.S. state where the event occurred."
+
+      - name: state_fips_code
+        description: "FIPS code uniquely identifying the state."
+
+      - name: event_type
+        description: "Meteorological classification of the event (e.g. Tornado, Flood, Hail)."
+
+      - name: cz_type
+        description: "Indicates whether the event happened in a County (C), Zone (Z), or Marine area (M)."
+
+      - name: cz_fips_code
+        description: "FIPS code for the county or zone of the event."
+
+      - name: cz_name
+        description: "Name of the county, zone, or marine area."
+
+      - name: wfo
+        description: "National Weather Service Forecast Office responsible for this event."
+
+      - name: event_begin_time
+        description: "Date and time the event began."
+
+      - name: event_end_time
+        description: "Date and time the event ended."
+
+      - name: event_timezone
+        description: "Time zone in which the event times are recorded."
+
+      - name: injuries_direct
+        description: "Number of injuries directly related to the event."
+
+      - name: injuries_indirect
+        description: "Number of injuries indirectly related to the event."
+
+      - name: deaths_direct
+        description: "Number of deaths directly related to the event."
+
+      - name: deaths_indirect
+        description: "Number of deaths indirectly related to the event."
+
+      - name: damage_property
+        description: "Estimated property damage caused by the event (in USD, not adjusted for inflation)."
+
+      - name: damage_crops
+        description: "Estimated crop damage caused by the event (in USD, not adjusted for inflation)."
+
+      - name: source
+        description: "Source that reported the event."
+
+      - name: magnitude
+        description: "Measured extent of wind speed (in MPH) or hail size (in inches)."
+
+      - name: magnitude_type
+        description: "Type of magnitude measurement (e.g., EG, MS, MG)."
+
+      - name: flood_cause
+        description: "Reported cause of the flood (if applicable)."
+
+      - name: tor_f_scale
+        description: "Enhanced Fujita Scale value for tornado events."
+
+      - name: tor_length
+        description: "Length of the tornado on the ground (in miles)."
+
+      - name: tor_width
+        description: "Width of the tornado path (in feet)."
+
+      - name: tor_other_wfo
+        description: "Other WFO that continued the tornado tracking."
+
+      - name: location_index
+        description: "Index representing specific locations within the same storm event."
+
+      - name: event_range
+        description: "Distance from reference location to event center (in tenths of a mile)."
+
+      - name: event_azimuth
+        description: "Compass direction from the reference point to the event center."
+
+      - name: reference_location
+        description: "Name of the reference location used to determine azimuth and range."
+
+      - name: event_latitude
+        description: "Latitude of the event location."
+
+      - name: event_longitude
+        description: "Longitude of the event location."
+
+      - name: event_point
+        description: "Geographic representation of the event (GEOGRAPHY field)."
