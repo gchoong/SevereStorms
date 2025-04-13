@@ -35,6 +35,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/kestra-wd:/tmp/kestra-wd
       - ./terraform/my_creds.json:/app/secrets/my_creds.json
+      - ./dbt:/app/dbt
     env_file: .env_encoded
     environment:
       KESTRA_CONFIGURATION: |
