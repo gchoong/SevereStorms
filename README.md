@@ -81,7 +81,7 @@ The flow looks like this:
 
 - A Google Cloud Platform project
 - BigQuery and Cloud Storage enabled
-- A service account with permissions: BigQuery Admin, Storage Admin
+- A service account with permissions: BigQuery Admin, Storage Admin, Compute Admin
 - Docker, Git, and Terraform installed locally
 
 ### Setup
