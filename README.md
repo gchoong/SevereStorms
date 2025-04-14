@@ -66,20 +66,7 @@ The project uses the following technologies:
 - **Docker Compose**: Runs local services like Kestra and PostgreSQL
 - **Looker Studio**: Consumes clean data models to power dashboards
 
-The flow looks like this:
-
-```
-BigQuery (raw data)
-   ↓
-Export to GCS (CSV)
-   ↓
-Load into Central Table (BigQuery)
-   ↓
-dbt Transformations (clean and model)
-   ↓
-Looker Studio Dashboard
-```
-
+![alt text](Images/Cleaned_Diagram.png)
 
 ## Deployment Guide
 
