@@ -1,24 +1,19 @@
 id: export-noaa-storms-to-gcs
 namespace: severe.storms
 
-description: |
-  Export NOAA storm data for a selected year from BigQuery public dataset,
-  load it to a temp table, merge into a partitioned fact table, run dbt transformations, and drop the temp.
 
-inputs:
-  - id: year
-    type: SELECT
-    description: Select year to export
-    values: ["2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"]
+description: |
+  Export NOAA storm data from BigQuery public dataset,
+  load it to a temp table, merge into a partitioned fact table, run dbt transformations, and drop the temp.
 
 variables:
   project: "bigquery-public-data"
   dataset: "noaa_historic_severe_storms"
-  table: "storms_{{inputs.year}}"
-  full_source_table: "{{vars.project}}.{{vars.dataset}}.{{vars.table}}"
-  destination_uri: "gs://{{kv('GCP_BUCKET_NAME')}}/noaa_storms/storms_{{inputs.year}}.csv"
-  destination_table: "{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.temp_storms_{{inputs.year}}"
-  fact_table: "{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.noaa_storms_fact"
+  table: "storms_{{trigger.date | date('yyyy')}}"
+  full_source_table: "{{ vars.project }}.{{ vars.dataset }}.{{ vars.table }}"
+  destination_uri: "gs://{{ kv('GCP_BUCKET_NAME') }}/noaa_storms/storms_{{trigger.date | date('yyyy')}}.csv"
+  destination_table: "{{ kv('GCP_PROJECT_ID') }}.{{ kv('GCP_DATASET') }}.temp_storms_{{trigger.date | date('yyyy')}}"
+  fact_table: "{{ kv('GCP_PROJECT_ID') }}.{{ kv('GCP_DATASET') }}.noaa_storms_fact"
 
 tasks:
   - id: query_storm_data
@@ -87,7 +82,7 @@ tasks:
             COALESCE(CAST(event_begin_time AS STRING), ''),
             COALESCE(event_type, '')
           ))) AS STRING) AS unique_row_id,
-          "storms_{{ inputs.year }}.csv" AS filename,
+          "storms_{{trigger.date | date('yyyy')}}.csv" AS filename,
           episode_id,
           event_id,
           state,
@@ -154,7 +149,7 @@ tasks:
       type: io.kestra.plugin.scripts.runner.docker.Docker
     commands:
       - dbt deps
-      - dbt build   # ✅ removed --profiles-dir
+      - dbt build
     storeManifest:
       key: manifest.json
       namespace: "{{ flow.namespace }}"
@@ -171,7 +166,6 @@ tasks:
             threads: 4
         target: dev
 
-
 pluginDefaults:
   - type: io.kestra.plugin.gcp
     values:
@@ -179,4 +173,9 @@ pluginDefaults:
       projectId: "{{ kv('GCP_PROJECT_ID') }}"
       location: "{{ kv('GCP_LOCATION') }}"
       bucket: "{{ kv('GCP_BUCKET_NAME') }}"
+
+triggers:
+  - id: monthly_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 2 2 * *"
 
