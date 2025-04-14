@@ -3,8 +3,8 @@ namespace: severe.storms
 
 
 description: |
-  Export NOAA storm data from BigQuery public dataset,
-  load it to a temp table, merge into a partitioned fact table, run dbt transformations, and drop the temp.
+  Export NOAA storm data from BigQuery public dataset, run this flow in backfill mode to grab all the dates you will need. It then
+  loads it to a temp table, merge into a partitioned fact table, run dbt transformations, and drop the temp table
 
 variables:
   project: "bigquery-public-data"
@@ -175,7 +175,8 @@ pluginDefaults:
       bucket: "{{ kv('GCP_BUCKET_NAME') }}"
 
 triggers:
-  - id: monthly_schedule
+  - id: yearly_schedule
     type: io.kestra.plugin.core.trigger.Schedule
-    cron: "0 2 2 * *"
+    cron: "0 2 2 1 *"
+
 
