@@ -38,9 +38,10 @@ NOAA’s dataset documents significant weather events across the U.S., including
 ### Challenges
 
 - NOAA storm data is distributed across annual tables
+- NOAA codes are unintuitive
 - The dataset is large and inefficient to query without optimization
 - Transformations need to be modular, testable, and maintainable
-- Dashboards require cleaned and analytical data models due to non-intuitive federal codes
+- Dashboards require cleaned and analytical data to easily gain insights
 
 ### Solution
 
@@ -67,74 +68,98 @@ The project uses the following technologies:
 
 The flow looks like this:
 
-1. Extract storm data from BigQuery
-2. Write to a temp table and export to GCS
-3. Merge into a centralized fact table in BigQuery
-4. Run dbt transformations
-5. Visualize in Looker Studio
+```
+BigQuery (raw data)
+   ↓
+Export to GCS (CSV)
+   ↓
+Load into Central Table (BigQuery)
+   ↓
+dbt Transformations (clean and model)
+   ↓
+Looker Studio Dashboard
+```
 
----
 
 ## Deployment Guide
 
 ### Prerequisites
 
-- A Google Cloud Platform project
-- BigQuery and Cloud Storage enabled
-- A service account with permissions: BigQuery Admin, Storage Admin, Compute Admin
-- Docker, Git, and Terraform installed locally
+Before starting, make sure you have:
+
+- A Google Cloud Platform (GCP) project
+- Enabled the BigQuery and Cloud Storage APIs
+- A service account with these roles:
+  - BigQuery Admin  
+  - Storage Admin  
+  - Compute Admin  
+- Installed on your machine:
+  - **Git**
+  - **Docker**
+  - **Terraform**
 
 ### Setup
 
 ```bash
-# Clone the repo
+# Step 1: Clone this project
 git clone https://github.com/gchoong/SevereStorms.git
 cd SevereStorms/
 
-# get your service account key, name it my_creds.json then put into root and /terraform folder
+# Step 2: Add your GCP credentials
+# Name your service account key: my_creds.json
+# Put it in the root folder AND the /terraform folder
 
-# For simplicity sake, we will use one service account for kestra, terraform, and dbt.
-
-#create env_encoded file
-
+# Step 3: Create env_encoded folder
 mkdir .env_encoded
 
-#run the env_script.sh in bash to get your key which will go into the env_encoded
+# Step 4: Run env_script.sh to encode your credentials for Kestra
+bash env_script.sh
 
-# Build and start containers
+# Step 5: Start local services
 docker compose up --build
-
 ```
 
 # Running the Pipeline
-Open Kestra UI: http://localhost:8080
+### 1. Access Kestra
 
-Copy and paste the following .yml files and create them in Kestra
+Open your browser and go to:  
+**http://localhost:8080**
 
-- kv_script.yml
-- noaa_storm_to_gcs.yml
-- transform_noaa_dbt.yml
+### 2. Add Kestra Workflows
 
-Run the flow export-noaa-storms-to-gcs via backfill execution. One year should be fine to show the proof of concept, But you can run all the way back to 1950 if you want to waste credits!
+Copy-paste these YAML files into new flows in the Kestra UI:
 
-![alt text](Images/Backfill.png)
+- `kv_script.yml`
+- `noaa_storm_to_gcs.yml`
+- `transform_noaa_dbt.yml`
 
-Run the flow transform-noaa-dbt to execute dbt transformations
+### 3. Run the Workflows
 
-Access and analyze the results in BigQuery or Looker Studio
+1. **Run `export-noaa-storms-to-gcs`**  as backfill
+   - I ran the past 10 years from 2024. (2025 is not available)
+   - (Older years available from 1950 onwards — but may cost credits)
+
+2. **Run `transform-noaa-dbt`**  
+   - This will clean and structure your data for analysis
 
 # Dashboard Visualization
 
-The final dashboard, built in Looker Studio, includes:
+The final dashboard, built in [**Looker Studio**](https://lookerstudio.google.com/s/qotLhE77CmI), provides a fully interactive experience for exploring the impact of severe storms across the United States. Users can explore, filter, and compare storm events using a variety of dynamic charts and controls.
 
-Map charts showing storm impact by location (total damage, fatalities)
-Bar charts comparing storm types by injuries or cost
-Time series trends for fatalities and damage over the years
-Interactive filters to drill down by event type, state, or year
+### Key Features
 
-https://lookerstudio.google.com/s/j3MpOYLqOJ4
+- **Dynamic Metric Switching**  
+  Easily toggle between key metrics — including *total injuries, total deaths, property damage, crop damage, total damage*, and *storm magnitude* — using a single dropdown selector. All visualizations update automatically based on the selected metric.
 
-![alt text](Images/Map.png)
+- **Interactive Bubble Map**  
+  View storm events geographically using a Google Maps chart, with bubble size and color driven by the selected metric. Tooltips dynamically reflect the metric value and label, helping users immediately understand the impact.
+
+- **Bar Charts**  
+  Compare storm types by total injuries, fatalities, or damage. Charts automatically reflect the selected metric for side-by-side comparison of event categories.
+
+https://lookerstudio.google.com/s/qotLhE77CmI
+
+![alt text](Images/Dashboard.png)
 
 
 # Summary
