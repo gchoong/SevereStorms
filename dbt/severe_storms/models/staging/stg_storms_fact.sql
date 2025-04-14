@@ -6,7 +6,7 @@ SELECT
   event_id,
   episode_id,
   state,
-  state_fips_code,
+  CAST(state_fips_code as STRING) as state_fips_code,
   event_type,
   cz_type,
   cz_fips_code,
