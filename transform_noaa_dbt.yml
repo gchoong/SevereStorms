@@ -1,0 +1,54 @@
+id: transform-noaa-storms
+namespace: severe.storms
+
+description: |
+  Run dbt transformations on the NOAA storm fact table after it's been updated.
+
+tasks:
+  - id: sync_dbt_project
+    type: io.kestra.plugin.git.SyncNamespaceFiles
+    url: https://github.com/gchoong/SevereStorms
+    branch: main
+    namespace: "{{flow.namespace}}"
+    gitDirectory: dbt/severe_storms
+    dryRun: false
+
+  - id: dbt_build
+    type: io.kestra.plugin.dbt.cli.DbtCLI
+    description: Run dbt to transform storm fact table
+    env:
+      DBT_DATABASE: "{{ kv('GCP_PROJECT_ID') }}"
+      DBT_SCHEMA: "{{ kv('GCP_DATASET') }}"
+    namespaceFiles:
+      enabled: true
+    inputFiles:
+      sa.json: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+    containerImage: ghcr.io/kestra-io/dbt-bigquery:latest
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+    commands:
+      - dbt deps
+      - dbt build
+    storeManifest:
+      key: manifest.json
+      namespace: "{{ flow.namespace }}"
+    profiles: |
+      severe_storms:
+        outputs:
+          dev:
+            type: bigquery
+            method: service-account
+            project: "{{ kv('GCP_PROJECT_ID') }}"
+            dataset: "{{ kv('GCP_DATASET') }}"
+            location: "{{ kv('GCP_LOCATION') }}"
+            keyfile: sa.json
+            threads: 4
+        target: dev
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+      projectId: "{{ kv('GCP_PROJECT_ID') }}"
+      location: "{{ kv('GCP_LOCATION') }}"
+      bucket: "{{ kv('GCP_BUCKET_NAME') }}"
