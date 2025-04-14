@@ -9,6 +9,7 @@
 - [Running The Pipeine](#running-the-pipeline)
 - [Dashboard Visualization](#dashboard-visualization)
 - [Summary](#summary)
+- [Project Teardown](#project-teardown)
 - [Considerations](#considerations)
 
 ---
@@ -47,7 +48,7 @@ This project builds a modern pipeline that solves those issues by:
 - Extracting and staging raw storm data from BigQuery public datasets
 - Exporting the data to Cloud Storage and merging into a central fact table
 - Transforming the data with dbt to standardize and clean for analysis
-- Orchestrating the full ETL workflow with Kestra
+- Orchestrating the full ELT workflow with Kestra
 - Visualizing results in Looker Studio with maps and trend charts
 
 ---
@@ -114,7 +115,7 @@ Copy and paste the following .yml files and create them in Kestra
 - noaa_storm_to_gcs.yml
 - transform_noaa_dbt.yml
 
-Run the flow export-noaa-storms-to-gcs via backfill execution. One year should be fine. 
+Run the flow export-noaa-storms-to-gcs via backfill execution. One year should be fine to show the proof of concept, But you can run all the way back to 1950 if you want to waste credits!
 
 ![alt text](Images/Backfill.png)
 
@@ -149,6 +150,18 @@ This project demonstrates key data engineering capabilities:
 
 The result is a scalable, production-ready pipeline that transforms public storm data into insights for exploration, research, and public awareness.
 
+# Project Teardown
+
+You will need to first need to run
+
+```docker-compose run --entrypoint "sh" terraform```
+
+then run ```terraform destroy```. 
+
+now you can run 
+
+```docker compose down```
+
 # Considerations
 
 ## Partitioning and Clustering 
@@ -158,9 +171,3 @@ The BigQuery tables are partitioned by ```event_begin_time``` and clustered by `
 ## Transformations
 Found within the dbt/models/core filepath
 
-# Notes
-if wanting to close terraform without closing docker 
-
-docker-compose run --entrypoint "sh" terraform
-
-then run terraform destroy. 
