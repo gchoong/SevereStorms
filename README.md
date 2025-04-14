@@ -9,6 +9,7 @@
 - [Running The Pipeine](#running-the-pipeline)
 - [Dashboard Visualization](#dashboard-visualization)
 - [Summary](#summary)
+- [Considerations](#considerations)
 
 ---
 
@@ -115,6 +116,8 @@ Copy and paste the following .yml files and create them in Kestra
 
 Run the flow export-noaa-storms-to-gcs via backfill execution. One year should be fine. 
 
+![alt text](Images/Backfill.png)
+
 Run the flow transform-noaa-dbt to execute dbt transformations
 
 Access and analyze the results in BigQuery or Looker Studio
@@ -130,6 +133,8 @@ Interactive filters to drill down by event type, state, or year
 
 https://lookerstudio.google.com/s/j3MpOYLqOJ4
 
+![alt text](Images/Map.png)
+
 
 # Summary
 
@@ -143,6 +148,16 @@ This project demonstrates key data engineering capabilities:
 - ✅ Interactive, multi-tile dashboard in Looker Studio
 
 The result is a scalable, production-ready pipeline that transforms public storm data into insights for exploration, research, and public awareness.
+
+# Considerations
+
+## Partitioning and Clustering 
+
+The BigQuery tables are partitioned by ```event_begin_time``` and clustered by ```event_type```, ```state```, and ```event_year```. This design was chosen to support common access patterns — such as filtering by time, storm type, and location — while minimizing query cost and maximizing performance for interactive analytics.
+
+## Transformations
+Found within the dbt/models/core filepath
+
 # Notes
 if wanting to close terraform without closing docker 
 
