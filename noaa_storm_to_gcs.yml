@@ -3,7 +3,7 @@ namespace: severe.storms
 
 description: |
   Export NOAA storm data for a selected year from BigQuery public dataset,
-  load it to a temp table, merge into a fact table, and drop the temp.
+  load it to a temp table, merge into a partitioned fact table, run dbt transformations, and drop the temp.
 
 inputs:
   - id: year
@@ -16,7 +16,6 @@ variables:
   dataset: "noaa_historic_severe_storms"
   table: "storms_{{inputs.year}}"
   full_source_table: "{{vars.project}}.{{vars.dataset}}.{{vars.table}}"
-
   destination_uri: "gs://{{kv('GCP_BUCKET_NAME')}}/noaa_storms/storms_{{inputs.year}}.csv"
   destination_table: "{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.temp_storms_{{inputs.year}}"
   fact_table: "{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.noaa_storms_fact"
@@ -29,9 +28,6 @@ tasks:
     destinationTable: "{{ render(vars.destination_table) }}"
     writeDisposition: WRITE_TRUNCATE
     createDisposition: CREATE_IF_NEEDED
-    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
-    projectId: "{{ kv('GCP_PROJECT_ID') }}"
-    location: "{{ kv('GCP_LOCATION') }}"
 
   - id: export_to_gcs
     type: io.kestra.plugin.gcp.bigquery.ExtractToGcs
@@ -40,9 +36,6 @@ tasks:
       - "{{ render(vars.destination_uri) }}"
     format: CSV
     compression: GZIP
-    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
-    projectId: "{{ kv('GCP_PROJECT_ID') }}"
-    location: "{{ kv('GCP_LOCATION') }}"
 
   - id: merge_into_fact_table
     type: io.kestra.plugin.gcp.bigquery.Query
@@ -132,17 +125,52 @@ tasks:
       ON T.unique_row_id = S.unique_row_id
       WHEN NOT MATCHED THEN
         INSERT ROW;
-    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
-    projectId: "{{ kv('GCP_PROJECT_ID') }}"
-    location: "{{ kv('GCP_LOCATION') }}"
 
   - id: drop_temp_table
     type: io.kestra.plugin.gcp.bigquery.Query
     sql: |
       DROP TABLE IF EXISTS `{{ render(vars.destination_table) }}`
-    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
-    projectId: "{{ kv('GCP_PROJECT_ID') }}"
-    location: "{{ kv('GCP_LOCATION') }}"
+
+  - id: sync_dbt_project
+    type: io.kestra.plugin.git.SyncNamespaceFiles
+    url: https://github.com/gchoong/SevereStorms
+    branch: main
+    namespace: "{{flow.namespace}}"
+    gitDirectory: dbt/severe_storms
+    dryRun: false
+
+  - id: dbt_build
+    type: io.kestra.plugin.dbt.cli.DbtCLI
+    description: Run dbt to transform storm fact table
+    env:
+      DBT_DATABASE: "{{ kv('GCP_PROJECT_ID') }}"
+      DBT_SCHEMA: "{{ kv('GCP_DATASET') }}"
+    namespaceFiles:
+      enabled: true
+    inputFiles:
+      sa.json: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+    containerImage: ghcr.io/kestra-io/dbt-bigquery:latest
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+    commands:
+      - dbt deps
+      - dbt build   # ✅ removed --profiles-dir
+    storeManifest:
+      key: manifest.json
+      namespace: "{{ flow.namespace }}"
+    profiles: |
+      severe_storms:
+        outputs:
+          dev:
+            type: bigquery
+            method: service-account
+            project: "{{ kv('GCP_PROJECT_ID') }}"
+            dataset: "{{ kv('GCP_DATASET') }}"
+            location: "{{ kv('GCP_LOCATION') }}"
+            keyfile: sa.json
+            threads: 4
+        target: dev
+
 
 pluginDefaults:
   - type: io.kestra.plugin.gcp
@@ -151,5 +179,4 @@ pluginDefaults:
       projectId: "{{ kv('GCP_PROJECT_ID') }}"
       location: "{{ kv('GCP_LOCATION') }}"
       bucket: "{{ kv('GCP_BUCKET_NAME') }}"
-
 
