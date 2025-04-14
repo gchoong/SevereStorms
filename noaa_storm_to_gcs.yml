@@ -80,7 +80,8 @@ tasks:
             COALESCE(event_id, ''),
             COALESCE(state, ''),
             COALESCE(CAST(event_begin_time AS STRING), ''),
-            COALESCE(event_type, '')
+            COALESCE(event_type, ''),
+            COALESCE(Location_index, '')
           ))) AS STRING) AS unique_row_id,
           "storms_{{trigger.date | date('yyyy')}}.csv" AS filename,
           episode_id,
